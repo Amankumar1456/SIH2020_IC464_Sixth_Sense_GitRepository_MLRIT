@@ -39,7 +39,6 @@ namespace mediapipe {
 //   ROTATION: the counterclockwise rotation angle in degrees. This allows
 //   user to specify different rotation angles for different frames. If this
 //   stream is provided, it will override the ROTATION input side packet.
-//   OUTPUT_DIMENSIONS: the output width and height in pixels.
 // Additional output streams:
 //   TOP_BOTTOM_PADDING: If use FIT scale mode, this stream outputs the padding
 //   size of the input image in normalized value [0, 1] for top and bottom
@@ -84,7 +83,6 @@ class GlScalerCalculator : public CalculatorBase {
   GlCalculatorHelper helper_;
   int dst_width_ = 0;
   int dst_height_ = 0;
-  float dst_scale_ = -1.f;
   FrameRotation rotation_;
   std::unique_ptr<QuadRenderer> rgb_renderer_;
   std::unique_ptr<QuadRenderer> yuv_renderer_;
@@ -103,9 +101,6 @@ REGISTER_CALCULATOR(GlScalerCalculator);
   TagOrIndex(&cc->Outputs(), "VIDEO", 0).Set<GpuBuffer>();
   if (cc->Inputs().HasTag("ROTATION")) {
     cc->Inputs().Tag("ROTATION").Set<int>();
-  }
-  if (cc->Inputs().HasTag("OUTPUT_DIMENSIONS")) {
-    cc->Inputs().Tag("OUTPUT_DIMENSIONS").Set<DimensionsPacketType>();
   }
   MP_RETURN_IF_ERROR(GlCalculatorHelper::UpdateContract(cc));
 
@@ -147,9 +142,6 @@ REGISTER_CALCULATOR(GlScalerCalculator);
   if (options.has_output_height()) {
     dst_height_ = options.output_height();
   }
-  if (options.has_output_scale()) {
-    dst_scale_ = options.output_scale();
-  }
   if (options.has_rotation()) {
     rotation_ccw = options.rotation();
   }
@@ -185,18 +177,6 @@ REGISTER_CALCULATOR(GlScalerCalculator);
 }
 
 ::mediapipe::Status GlScalerCalculator::Process(CalculatorContext* cc) {
-  if (cc->Inputs().HasTag("OUTPUT_DIMENSIONS")) {
-    if (cc->Inputs().Tag("OUTPUT_DIMENSIONS").IsEmpty()) {
-      // OUTPUT_DIMENSIONS input stream is specified, but value is missing.
-      return ::mediapipe::OkStatus();
-    }
-
-    const auto& dimensions =
-        cc->Inputs().Tag("OUTPUT_DIMENSIONS").Get<DimensionsPacketType>();
-    dst_width_ = dimensions[0];
-    dst_height_ = dimensions[1];
-  }
-
   return helper_.RunInGlContext([this, cc]() -> ::mediapipe::Status {
     const auto& input = TagOrIndex(cc->Inputs(), "VIDEO", 0).Get<GpuBuffer>();
     QuadRenderer* renderer = nullptr;
@@ -215,7 +195,7 @@ REGISTER_CALCULATOR(GlScalerCalculator);
       src1 = helper_.CreateSourceTexture(input, 0);
       src2 = helper_.CreateSourceTexture(input, 1);
     } else  // NOLINT(readability/braces)
-#endif  // __APPLE__
+#endif      // __APPLE__
     {
       src1 = helper_.CreateSourceTexture(input);
 #ifdef __ANDROID__
@@ -227,7 +207,7 @@ REGISTER_CALCULATOR(GlScalerCalculator);
         }
         renderer = ext_rgb_renderer_.get();
       } else  // NOLINT(readability/braces)
-#endif  // __ANDROID__
+#endif        // __ANDROID__
       {
         if (!rgb_renderer_) {
           rgb_renderer_ = absl::make_unique<QuadRenderer>();
@@ -303,18 +283,8 @@ void GlScalerCalculator::GetOutputDimensions(int src_width, int src_height,
   if (dst_width_ > 0 && dst_height_ > 0) {
     *dst_width = dst_width_;
     *dst_height = dst_height_;
-    return;
-  }
-  if (dst_scale_ > 0) {
-    // Scales the destination size, but just uses src size as a temporary for
-    // calculations.
-    src_width = static_cast<int>(src_width * dst_scale_);
-    src_height = static_cast<int>(src_height * dst_scale_);
-    // Round to nearest multiply of 4 for better memory alignment.
-    src_width = ((src_width + 2) >> 2) << 2;
-    src_height = ((src_height + 2) >> 2) << 2;
-  }
-  if (rotation_ == FrameRotation::k90 || rotation_ == FrameRotation::k270) {
+  } else if (rotation_ == FrameRotation::k90 ||
+             rotation_ == FrameRotation::k270) {
     *dst_width = src_height;
     *dst_height = src_width;
   } else {

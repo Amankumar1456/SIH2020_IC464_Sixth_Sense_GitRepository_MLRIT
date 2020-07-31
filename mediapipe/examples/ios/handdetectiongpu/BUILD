@@ -21,11 +21,6 @@ load(
     "ios_application",
 )
 
-alias(
-    name = "handdetectiongpu",
-    actual = "HandDetectionGpuApp",
-)
-
 ios_application(
     name = "HandDetectionGpuApp",
     bundle_id = "com.google.mediapipe.HandDetectionGpu",

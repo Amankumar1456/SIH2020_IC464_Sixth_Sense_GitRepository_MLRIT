@@ -21,11 +21,6 @@ licenses(["notice"])  # Apache 2.0
 
 MIN_IOS_VERSION = "10.0"
 
-alias(
-    name = "multihandtrackinggpu",
-    actual = "MultiHandTrackingGpuApp",
-)
-
 ios_application(
     name = "MultiHandTrackingGpuApp",
     bundle_id = "com.google.mediapipe.MultiHandTrackingGpu",

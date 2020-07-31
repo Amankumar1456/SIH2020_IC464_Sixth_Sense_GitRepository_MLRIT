@@ -18,10 +18,6 @@ import com.google.mediapipe.framework.TextureFrame;
 
 /** Lightweight abstraction for an object that can receive video frames. */
 public interface TextureFrameConsumer {
-  /**
-   * Called when a new {@link TextureFrame} is available.
-   *
-   * Important: implementations of this method should call frame.release().
-   **/
+  /** Called when a new {@link TextureFrame} is available. */
   public abstract void onNewFrame(TextureFrame frame);
 }

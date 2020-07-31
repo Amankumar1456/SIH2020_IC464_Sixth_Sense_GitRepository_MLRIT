@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #import "AppDelegate.h"
-#import "ViewController.h"
 
 @interface AppDelegate ()
 
@@ -23,14 +22,7 @@
 
 - (BOOL)application:(UIApplication *)application
     didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
-  ViewController *viewController = (ViewController *)self.window.rootViewController;
-  NSURL *url = [launchOptions objectForKey:UIApplicationLaunchOptionsURLKey];
-  // Unattended testing on Firebase is enabled by custom URL schema.
-  if ([url.scheme isEqualToString:@"firebase-game-loop"]) {
-    [viewController setSourceMode:MediaPipeDemoSourceVideo];
-  } else {
-    [viewController setSourceMode:MediaPipeDemoSourceBackCamera];
-  }
+  // Override point for customization after application launch.
   return YES;
 }
 

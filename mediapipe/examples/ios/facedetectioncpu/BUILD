@@ -21,11 +21,6 @@ load(
     "ios_application",
 )
 
-alias(
-    name = "facedetectioncpu",
-    actual = "FaceDetectionCpuApp",
-)
-
 ios_application(
     name = "FaceDetectionCpuApp",
     bundle_id = "com.google.mediapipe.FaceDetectionCpu",

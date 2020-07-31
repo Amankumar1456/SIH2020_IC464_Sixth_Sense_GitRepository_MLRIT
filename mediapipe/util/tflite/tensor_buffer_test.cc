@@ -2,7 +2,6 @@
 
 #include "mediapipe/framework/port/gmock.h"
 #include "mediapipe/framework/port/gtest.h"
-#include "mediapipe/util/tflite/config.h"
 
 namespace mediapipe {
 
@@ -13,7 +12,7 @@ TEST(Cpu, BasicTest) {
   EXPECT_FALSE(tb.UsesGpu());
 }
 
-#if MEDIAPIPE_TFLITE_GL_INFERENCE
+#if !defined(MEDIAPIPE_DISABLE_GPU)
 TEST(Gpu, BasicTest) {
   TensorBuffer tb;
   std::shared_ptr<tflite::gpu::gl::GlBuffer> tfg_tb =
@@ -21,7 +20,7 @@ TEST(Gpu, BasicTest) {
   tb = TensorBuffer(tfg_tb);
   EXPECT_TRUE(tb.UsesGpu());
 }
-#endif  // !MEDIAPIPE_TFLITE_GL_INFERENCE
+#endif  // !MEDIAPIPE_DISABLE_GPU
 
 }  // namespace mediapipe
 

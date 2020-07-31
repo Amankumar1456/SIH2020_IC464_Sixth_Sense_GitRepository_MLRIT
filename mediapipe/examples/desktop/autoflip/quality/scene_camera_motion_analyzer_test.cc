@@ -63,6 +63,16 @@ Rect MakeRect(const int x, const int y, const int width, const int height) {
   return rect;
 }
 
+// Returns default values for KeyFrameInfos. Populates timestamps using the
+// default spacing kKeyFrameTimestampDiff starting from 0.
+std::vector<KeyFrameInfo> GetDefaultKeyFrameInfos() {
+  std::vector<KeyFrameInfo> key_frame_infos(kNumKeyFrames);
+  for (int i = 0; i < kNumKeyFrames; ++i) {
+    key_frame_infos[i].set_timestamp_ms(kKeyFrameTimestampDiff * i);
+  }
+  return key_frame_infos;
+}
+
 // Returns default values for scene frame timestamps. Populates timestamps using
 // the default spacing kSceneFrameTimestampDiff starting from 0.
 std::vector<int64> GetDefaultSceneFrameTimestamps() {
@@ -98,7 +108,6 @@ std::vector<KeyFrameCropResult> GetDefaultKeyFrameCropResults() {
     *(key_frame_crop_results[i].mutable_required_region()) =
         MakeRect(10, 10, 20, 20);
     key_frame_crop_results[i].set_region_score(1.0);
-    key_frame_crop_results[i].set_timestamp_ms(kKeyFrameTimestampDiff * i);
   }
   return key_frame_crop_results;
 }
@@ -174,10 +183,10 @@ TEST(SceneCameraMotionAnalyzerTest, DecideCameraMotionTypeChecksOutputNotNull) {
   SceneKeyFrameCropSummary scene_summary;
   SceneCameraMotion camera_motion;
   auto status = analyzer.DecideCameraMotionType(crop_options, kSceneTimeSpanSec,
-                                                0, nullptr, &camera_motion);
+                                                nullptr, &camera_motion);
   EXPECT_FALSE(status.ok());
   EXPECT_THAT(status.ToString(), HasSubstr("Scene summary is null."));
-  status = analyzer.DecideCameraMotionType(crop_options, kSceneTimeSpanSec, 0,
+  status = analyzer.DecideCameraMotionType(crop_options, kSceneTimeSpanSec,
                                            &scene_summary, nullptr);
   EXPECT_FALSE(status.ok());
   EXPECT_THAT(status.ToString(), HasSubstr("Scene camera motion is null."));
@@ -195,8 +204,8 @@ TEST(SceneCameraMotionAnalyzerTest,
   scene_summary.set_has_salient_region(false);
   SceneCameraMotion camera_motion;
 
-  MP_EXPECT_OK(analyzer.DecideCameraMotionType(
-      crop_options, kSceneTimeSpanSec, 0, &scene_summary, &camera_motion));
+  MP_EXPECT_OK(analyzer.DecideCameraMotionType(crop_options, kSceneTimeSpanSec,
+                                               &scene_summary, &camera_motion));
   EXPECT_TRUE(camera_motion.has_steady_motion());
   const auto& steady_motion = camera_motion.steady_motion();
   EXPECT_FLOAT_EQ(steady_motion.steady_look_at_center_x(),
@@ -220,7 +229,7 @@ TEST(SceneCameraMotionAnalyzerTest, DecideCameraMotionTypeSweepingLeftToRight) {
   SceneCameraMotion camera_motion;
 
   MP_EXPECT_OK(analyzer.DecideCameraMotionType(GetDefaultKeyFrameCropOptions(),
-                                               time_span, 0, &scene_summary,
+                                               time_span, &scene_summary,
                                                &camera_motion));
 
   EXPECT_TRUE(camera_motion.has_sweeping_motion());
@@ -249,7 +258,7 @@ TEST(SceneCameraMotionAnalyzerTest, DecideCameraMotionTypeSweepingTopToBottom) {
   SceneCameraMotion camera_motion;
 
   MP_EXPECT_OK(analyzer.DecideCameraMotionType(GetDefaultKeyFrameCropOptions(),
-                                               time_span, 0, &scene_summary,
+                                               time_span, &scene_summary,
                                                &camera_motion));
 
   EXPECT_TRUE(camera_motion.has_sweeping_motion());
@@ -278,7 +287,7 @@ TEST(SceneCameraMotionAnalyzerTest, DecideCameraMotionTypeSweepingCenterRange) {
   SceneCameraMotion camera_motion;
 
   MP_EXPECT_OK(analyzer.DecideCameraMotionType(GetDefaultKeyFrameCropOptions(),
-                                               time_span, 0, &scene_summary,
+                                               time_span, &scene_summary,
                                                &camera_motion));
 
   EXPECT_TRUE(camera_motion.has_sweeping_motion());
@@ -307,7 +316,7 @@ TEST(SceneCameraMotionAnalyzerTest,
   SceneCameraMotion camera_motion;
 
   MP_EXPECT_OK(analyzer.DecideCameraMotionType(GetDefaultKeyFrameCropOptions(),
-                                               kSceneTimeSpanSec, 0,
+                                               kSceneTimeSpanSec,
                                                &scene_summary, &camera_motion));
   EXPECT_TRUE(camera_motion.has_steady_motion());
   EXPECT_EQ(camera_motion.steady_motion().steady_look_at_center_x(),
@@ -332,7 +341,7 @@ TEST(SceneCameraMotionAnalyzerTest,
   SceneCameraMotion camera_motion;
 
   MP_EXPECT_OK(analyzer.DecideCameraMotionType(GetDefaultKeyFrameCropOptions(),
-                                               kSceneTimeSpanSec, 0,
+                                               kSceneTimeSpanSec,
                                                &scene_summary, &camera_motion));
   EXPECT_TRUE(camera_motion.has_steady_motion());
   EXPECT_EQ(camera_motion.steady_motion().steady_look_at_center_x(),
@@ -357,7 +366,7 @@ TEST(SceneCameraMotionAnalyzerTest,
   SceneCameraMotion camera_motion;
 
   MP_EXPECT_OK(analyzer.DecideCameraMotionType(GetDefaultKeyFrameCropOptions(),
-                                               kSceneTimeSpanSec, 0,
+                                               kSceneTimeSpanSec,
                                                &scene_summary, &camera_motion));
   EXPECT_TRUE(camera_motion.has_steady_motion());
   EXPECT_EQ(camera_motion.steady_motion().steady_look_at_center_x(),
@@ -382,8 +391,8 @@ TEST(SceneCameraMotionAnalyzerTest,
   scene_summary.set_key_frame_center_max_x(frame_center_x);
   SceneCameraMotion camera_motion;
 
-  MP_EXPECT_OK(analyzer.DecideCameraMotionType(
-      crop_options, kSceneTimeSpanSec, 0, &scene_summary, &camera_motion));
+  MP_EXPECT_OK(analyzer.DecideCameraMotionType(crop_options, kSceneTimeSpanSec,
+                                               &scene_summary, &camera_motion));
   EXPECT_TRUE(camera_motion.has_steady_motion());
   EXPECT_FLOAT_EQ(camera_motion.steady_motion().steady_look_at_center_x(),
                   frame_center_x);
@@ -400,7 +409,7 @@ TEST(SceneCameraMotionAnalyzerTest, DecideCameraMotionTypeTracking) {
   SceneCameraMotion camera_motion;
 
   MP_EXPECT_OK(analyzer.DecideCameraMotionType(GetDefaultKeyFrameCropOptions(),
-                                               kSceneTimeSpanSec, 0,
+                                               kSceneTimeSpanSec,
                                                &scene_summary, &camera_motion));
   EXPECT_TRUE(camera_motion.has_tracking_motion());
 }
@@ -776,9 +785,9 @@ TEST(SceneCameraMotionAnalyzerTest, AnalyzeSceneAndPopulateFocusPointFrames) {
   std::vector<FocusPointFrame> focus_point_frames;
 
   MP_EXPECT_OK(analyzer.AnalyzeSceneAndPopulateFocusPointFrames(
-      GetDefaultKeyFrameCropOptions(), GetDefaultKeyFrameCropResults(),
-      kSceneFrameWidth, kSceneFrameHeight, GetDefaultSceneFrameTimestamps(),
-      false, &scene_summary, &focus_point_frames));
+      GetDefaultKeyFrameInfos(), GetDefaultKeyFrameCropOptions(),
+      GetDefaultKeyFrameCropResults(), kSceneFrameWidth, kSceneFrameHeight,
+      GetDefaultSceneFrameTimestamps(), &scene_summary, &focus_point_frames));
   EXPECT_EQ(scene_summary.num_key_frames(), kNumKeyFrames);
   EXPECT_EQ(focus_point_frames.size(), kNumSceneFrames);
 }
@@ -794,9 +803,10 @@ TEST(SceneCameraMotionAnalyzerTest,
   SceneCameraMotion scene_camera_motion;
 
   MP_EXPECT_OK(analyzer.AnalyzeSceneAndPopulateFocusPointFrames(
-      GetDefaultKeyFrameCropOptions(), GetDefaultKeyFrameCropResults(),
-      kSceneFrameWidth, kSceneFrameHeight, GetDefaultSceneFrameTimestamps(),
-      false, &scene_summary, &focus_point_frames, &scene_camera_motion));
+      GetDefaultKeyFrameInfos(), GetDefaultKeyFrameCropOptions(),
+      GetDefaultKeyFrameCropResults(), kSceneFrameWidth, kSceneFrameHeight,
+      GetDefaultSceneFrameTimestamps(), &scene_summary, &focus_point_frames,
+      &scene_camera_motion));
   EXPECT_TRUE(scene_camera_motion.has_steady_motion());
 }
 

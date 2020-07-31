@@ -139,6 +139,7 @@ class TensorFlowSessionFromSavedModelGenerator : public PacketGenerator {
           static_cast<::mediapipe::StatusCode>(status.code()),
           status.ToString());
     }
+
     auto session = absl::make_unique<TensorFlowSession>();
     session->session = std::move(saved_model->session);
 

@@ -123,14 +123,11 @@ class LandmarkProjectionCalculator : public CalculatorBase {
 
         new_x = new_x * input_rect.width() + input_rect.x_center();
         new_y = new_y * input_rect.height() + input_rect.y_center();
-        const float new_z =
-            landmark.z() * input_rect.width();  // Scale Z coordinate as X.
 
         new_landmark->set_x(new_x);
         new_landmark->set_y(new_y);
-        new_landmark->set_z(new_z);
-        // Keep visibility as is.
-        new_landmark->set_visibility(landmark.visibility());
+        // Keep z-coord as is.
+        new_landmark->set_z(landmark.z());
       }
 
       cc->Outputs().Get(output_id).AddPacket(

@@ -84,8 +84,6 @@ FrameRotation FrameRotationFromDegrees(int degrees_ccw) {
   scale_unif_ = glGetUniformLocation(program_, "scale");
   RET_CHECK(scale_unif_ != -1) << "could not find uniform 'scale'";
 
-  glGenBuffers(2, vbo_);
-
   return ::mediapipe::OkStatus();
 }
 
@@ -93,11 +91,6 @@ void QuadRenderer::GlTeardown() {
   if (program_) {
     glDeleteProgram(program_);
     program_ = 0;
-  }
-  if (vbo_[0]) {
-    glDeleteBuffers(2, vbo_);
-    vbo_[0] = 0;
-    vbo_[1] = 0;
   }
 }
 
@@ -162,31 +155,13 @@ void QuadRenderer::GlTeardown() {
   }
 
   // Draw.
-
-  // TODO: In practice, our vertex attributes almost never change, so
-  // convert this to being actually static, with initialization done in the
-  // GLSetup.
+  glVertexAttribPointer(ATTRIB_VERTEX, 2, GL_FLOAT, 0, 0, vertices);
   glEnableVertexAttribArray(ATTRIB_VERTEX);
-  glBindBuffer(GL_ARRAY_BUFFER, vbo_[0]);
-  glBufferData(GL_ARRAY_BUFFER, sizeof(mediapipe::kBasicSquareVertices),
-               vertices, GL_STATIC_DRAW);
-  glVertexAttribPointer(ATTRIB_VERTEX, 2, GL_FLOAT, 0, 0, nullptr);
-
+  glVertexAttribPointer(
+      ATTRIB_TEXTURE_POSITION, 2, GL_FLOAT, 0, 0,
+      flip_texture ? kBasicTextureVerticesFlipY : kBasicTextureVertices);
   glEnableVertexAttribArray(ATTRIB_TEXTURE_POSITION);
-  glBindBuffer(GL_ARRAY_BUFFER, vbo_[1]);
-  glBufferData(
-      GL_ARRAY_BUFFER,
-      flip_texture ? sizeof(mediapipe::kBasicTextureVerticesFlipY)
-                   : sizeof(mediapipe::kBasicTextureVertices),
-      flip_texture ? kBasicTextureVerticesFlipY : kBasicTextureVertices,
-      GL_STATIC_DRAW);
-
-  glVertexAttribPointer(ATTRIB_TEXTURE_POSITION, 2, GL_FLOAT, 0, 0, nullptr);
-
   glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-  glDisableVertexAttribArray(ATTRIB_VERTEX);
-  glDisableVertexAttribArray(ATTRIB_TEXTURE_POSITION);
-  glBindBuffer(GL_ARRAY_BUFFER, 0);
 
   return ::mediapipe::OkStatus();
 }

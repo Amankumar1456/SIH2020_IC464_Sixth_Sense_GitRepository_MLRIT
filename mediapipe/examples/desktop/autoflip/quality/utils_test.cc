@@ -113,6 +113,16 @@ void AddDetectionFromScoreAndIsRequired(const double score,
   detection->set_is_required(is_required);
 }
 
+// Returns default values for KeyFrameInfos. Populates timestamps using the
+// default spacing kKeyFrameTimestampDiff starting from 0.
+std::vector<KeyFrameInfo> GetDefaultKeyFrameInfos() {
+  std::vector<KeyFrameInfo> key_frame_infos(kNumKeyFrames);
+  for (int i = 0; i < kNumKeyFrames; ++i) {
+    key_frame_infos[i].set_timestamp_ms(kKeyFrameTimestampDiff * i);
+  }
+  return key_frame_infos;
+}
+
 // Returns default settings for KeyFrameCropOptions. Populates target size to be
 // the default target size.
 KeyFrameCropOptions GetDefaultKeyFrameCropOptions() {
@@ -138,7 +148,6 @@ std::vector<KeyFrameCropResult> GetDefaultKeyFrameCropResults() {
     *(key_frame_crop_results[i].mutable_required_region()) =
         MakeRect(10, 10, 20, 20);
     key_frame_crop_results[i].set_region_score(1.0);
-    key_frame_crop_results[i].set_timestamp_ms(kKeyFrameTimestampDiff * i);
   }
   return key_frame_crop_results;
 }
@@ -493,8 +502,9 @@ TEST(UtilTest, SetKeyFrameCropTargetSetsTargetSizeCorrectly) {
 // Checks that AggregateKeyFrameResults checks output pointer is not null.
 TEST(UtilTest, AggregateKeyFrameResultsChecksOutputNotNull) {
   const auto status = AggregateKeyFrameResults(
-      GetDefaultKeyFrameCropOptions(), GetDefaultKeyFrameCropResults(),
-      kOriginalWidth, kOriginalHeight, nullptr);
+      GetDefaultKeyFrameInfos(), GetDefaultKeyFrameCropOptions(),
+      GetDefaultKeyFrameCropResults(), kOriginalWidth, kOriginalHeight,
+      nullptr);
   EXPECT_FALSE(status.ok());
   EXPECT_THAT(status.ToString(),
               HasSubstr("Output SceneKeyFrameCropSummary is null."));
@@ -502,20 +512,36 @@ TEST(UtilTest, AggregateKeyFrameResultsChecksOutputNotNull) {
 
 // Checks that AggregateKeyFrameResults handles the case of no key frames.
 TEST(UtilTest, AggregateKeyFrameResultsHandlesNoKeyFrames) {
+  std::vector<KeyFrameInfo> key_frame_infos(0);
   std::vector<KeyFrameCropResult> key_frame_crop_results(0);
   SceneKeyFrameCropSummary scene_summary;
 
-  MP_EXPECT_OK(AggregateKeyFrameResults(GetDefaultKeyFrameCropOptions(),
-                                        key_frame_crop_results, kOriginalWidth,
-                                        kOriginalHeight, &scene_summary));
+  MP_EXPECT_OK(AggregateKeyFrameResults(
+      key_frame_infos, GetDefaultKeyFrameCropOptions(), key_frame_crop_results,
+      kOriginalWidth, kOriginalHeight, &scene_summary));
+}
+
+// Checks that AggregateKeyFrameResults checks that number of key frames is
+// consistent between KeyFrameInfos and KeyFrameCropResults.
+TEST(UtilTest, AggregateKeyFrameResultsChecksNumKeyFramesConsistent) {
+  std::vector<KeyFrameInfo> key_frame_infos(kNumKeyFrames);
+  std::vector<KeyFrameCropResult> key_frame_crop_results(kNumKeyFrames + 1);
+  SceneKeyFrameCropSummary scene_summary;
+
+  const auto status = AggregateKeyFrameResults(
+      key_frame_infos, GetDefaultKeyFrameCropOptions(), key_frame_crop_results,
+      kOriginalWidth, kOriginalHeight, &scene_summary);
+  EXPECT_FALSE(status.ok());
+  EXPECT_THAT(status.ToString(),
+              HasSubstr("Inconsistent number of key frames"));
 }
 
 // Checks that AggregateKeyFrameResults checks that frame size is valid.
 TEST(UtilTest, AggregateKeyFrameResultsChecksFrameSizeValid) {
   SceneKeyFrameCropSummary scene_summary;
   const auto status = AggregateKeyFrameResults(
-      GetDefaultKeyFrameCropOptions(), GetDefaultKeyFrameCropResults(),
-      kOriginalWidth, 0, &scene_summary);
+      GetDefaultKeyFrameInfos(), GetDefaultKeyFrameCropOptions(),
+      GetDefaultKeyFrameCropResults(), kOriginalWidth, 0, &scene_summary);
   EXPECT_FALSE(status.ok());
   EXPECT_THAT(status.ToString(), HasSubstr("Non-positive frame height."));
 }
@@ -527,8 +553,9 @@ TEST(UtilTest, AggregateKeyFrameResultsChecksTargetSizeValid) {
   SceneKeyFrameCropSummary scene_summary;
 
   const auto status = AggregateKeyFrameResults(
-      key_frame_crop_options, GetDefaultKeyFrameCropResults(), kOriginalWidth,
-      kOriginalHeight, &scene_summary);
+      GetDefaultKeyFrameInfos(), key_frame_crop_options,
+      GetDefaultKeyFrameCropResults(), kOriginalWidth, kOriginalHeight,
+      &scene_summary);
   EXPECT_FALSE(status.ok());
   EXPECT_THAT(status.ToString(), HasSubstr("Non-positive target width."));
 }
@@ -541,8 +568,9 @@ TEST(UtilTest, AggregateKeyFrameResultsChecksTargetSizeNotExceedFrameSize) {
   SceneKeyFrameCropSummary scene_summary;
 
   const auto status = AggregateKeyFrameResults(
-      key_frame_crop_options, GetDefaultKeyFrameCropResults(), kOriginalWidth,
-      kOriginalHeight, &scene_summary);
+      GetDefaultKeyFrameInfos(), key_frame_crop_options,
+      GetDefaultKeyFrameCropResults(), kOriginalWidth, kOriginalHeight,
+      &scene_summary);
   EXPECT_FALSE(status.ok());
   EXPECT_THAT(status.ToString(),
               HasSubstr("Target width exceeds frame width."));
@@ -550,19 +578,19 @@ TEST(UtilTest, AggregateKeyFrameResultsChecksTargetSizeNotExceedFrameSize) {
 
 // Checks that AggregateKeyFrameResults packs KeyFrameCompactInfos.
 TEST(UtilTest, AggregateKeyFrameResultsPacksKeyFrameCompactInfos) {
+  const auto key_frame_infos = GetDefaultKeyFrameInfos();
   const auto key_frame_crop_results = GetDefaultKeyFrameCropResults();
   SceneKeyFrameCropSummary scene_summary;
 
-  MP_EXPECT_OK(AggregateKeyFrameResults(GetDefaultKeyFrameCropOptions(),
-                                        key_frame_crop_results, kOriginalWidth,
-                                        kOriginalHeight, &scene_summary));
+  MP_EXPECT_OK(AggregateKeyFrameResults(
+      key_frame_infos, GetDefaultKeyFrameCropOptions(), key_frame_crop_results,
+      kOriginalWidth, kOriginalHeight, &scene_summary));
 
   EXPECT_EQ(scene_summary.num_key_frames(), kNumKeyFrames);
   EXPECT_EQ(scene_summary.key_frame_compact_infos_size(), kNumKeyFrames);
   for (int i = 0; i < kNumKeyFrames; ++i) {
     const auto& compact_info = scene_summary.key_frame_compact_infos(i);
-    EXPECT_EQ(compact_info.timestamp_ms(),
-              key_frame_crop_results[i].timestamp_ms());
+    EXPECT_EQ(compact_info.timestamp_ms(), key_frame_infos[i].timestamp_ms());
     const auto center = RectCenter(key_frame_crop_results[i].region());
     EXPECT_FLOAT_EQ(compact_info.center_x(), center.first);
     EXPECT_FLOAT_EQ(compact_info.center_y(), center.second);
@@ -574,6 +602,7 @@ TEST(UtilTest, AggregateKeyFrameResultsPacksKeyFrameCompactInfos) {
 // Checks that AggregateKeyFrameResults ensures the centered region of target
 // size fits in frame bound.
 TEST(UtilTest, AggregateKeyFrameResultsEnsuresCropRegionFitsInFrame) {
+  std::vector<KeyFrameInfo> key_frame_infos(1);
   std::vector<KeyFrameCropResult> key_frame_crop_results(1);
   auto* crop_region = key_frame_crop_results[0].mutable_region();
   crop_region->set_x(0);
@@ -582,9 +611,9 @@ TEST(UtilTest, AggregateKeyFrameResultsEnsuresCropRegionFitsInFrame) {
   crop_region->set_height(10);
   SceneKeyFrameCropSummary scene_summary;
 
-  MP_EXPECT_OK(AggregateKeyFrameResults(GetDefaultKeyFrameCropOptions(),
-                                        key_frame_crop_results, kOriginalWidth,
-                                        kOriginalHeight, &scene_summary));
+  MP_EXPECT_OK(AggregateKeyFrameResults(
+      key_frame_infos, GetDefaultKeyFrameCropOptions(), key_frame_crop_results,
+      kOriginalWidth, kOriginalHeight, &scene_summary));
 
   EXPECT_EQ(scene_summary.crop_window_width(), kTargetWidth);
   EXPECT_EQ(scene_summary.crop_window_height(), kTargetHeight);
@@ -609,13 +638,14 @@ TEST(UtilTest, AggregateKeyFrameResultsEnsuresCropRegionFitsInFrame) {
 // frames with empty regions.
 TEST(UtilTest,
      AggregateKeyFrameResultsSetsMinusOneForKeyFramesWithEmptyRegions) {
+  std::vector<KeyFrameInfo> key_frame_infos(1);
   std::vector<KeyFrameCropResult> key_frame_crop_results(1);
   key_frame_crop_results[0].set_region_is_empty(true);
   SceneKeyFrameCropSummary scene_summary;
 
-  MP_EXPECT_OK(AggregateKeyFrameResults(GetDefaultKeyFrameCropOptions(),
-                                        key_frame_crop_results, kOriginalWidth,
-                                        kOriginalHeight, &scene_summary));
+  MP_EXPECT_OK(AggregateKeyFrameResults(
+      key_frame_infos, GetDefaultKeyFrameCropOptions(), key_frame_crop_results,
+      kOriginalWidth, kOriginalHeight, &scene_summary));
 
   const auto& compact_info = scene_summary.key_frame_compact_infos(0);
   EXPECT_FLOAT_EQ(compact_info.center_x(), -1.0f);
@@ -631,8 +661,8 @@ TEST(UtilTest, AggregateKeyFrameResultsRejectsNegativeCenter) {
   SceneKeyFrameCropSummary scene_summary;
 
   const auto status = AggregateKeyFrameResults(
-      GetDefaultKeyFrameCropOptions(), key_frame_crop_results, kOriginalWidth,
-      kOriginalHeight, &scene_summary);
+      GetDefaultKeyFrameInfos(), GetDefaultKeyFrameCropOptions(),
+      key_frame_crop_results, kOriginalWidth, kOriginalHeight, &scene_summary);
   EXPECT_FALSE(status.ok());
   EXPECT_THAT(status.ToString(), HasSubstr("Negative vertical center."));
 }
@@ -644,8 +674,8 @@ TEST(UtilTest, AggregateKeyFrameResultsRejectsNegativeScore) {
   SceneKeyFrameCropSummary scene_summary;
 
   const auto status = AggregateKeyFrameResults(
-      GetDefaultKeyFrameCropOptions(), key_frame_crop_results, kOriginalWidth,
-      kOriginalHeight, &scene_summary);
+      GetDefaultKeyFrameInfos(), GetDefaultKeyFrameCropOptions(),
+      key_frame_crop_results, kOriginalWidth, kOriginalHeight, &scene_summary);
   EXPECT_FALSE(status.ok());
   EXPECT_THAT(status.ToString(), HasSubstr("Negative score."));
 }
@@ -663,9 +693,9 @@ TEST(UtilTest, AggregateKeyFrameResultsSetsCenterRanges) {
   }
   SceneKeyFrameCropSummary scene_summary;
 
-  MP_EXPECT_OK(AggregateKeyFrameResults(GetDefaultKeyFrameCropOptions(),
-                                        key_frame_crop_results, kOriginalWidth,
-                                        kOriginalHeight, &scene_summary));
+  MP_EXPECT_OK(AggregateKeyFrameResults(
+      GetDefaultKeyFrameInfos(), GetDefaultKeyFrameCropOptions(),
+      key_frame_crop_results, kOriginalWidth, kOriginalHeight, &scene_summary));
 
   EXPECT_FLOAT_EQ(scene_summary.key_frame_center_min_x(), 25.0f);
   EXPECT_FLOAT_EQ(scene_summary.key_frame_center_max_x(), 45.0f);
@@ -682,9 +712,9 @@ TEST(UtilTest, AggregateKeyFrameResultsSetsScoreRange) {
   }
   SceneKeyFrameCropSummary scene_summary;
 
-  MP_EXPECT_OK(AggregateKeyFrameResults(GetDefaultKeyFrameCropOptions(),
-                                        key_frame_crop_results, kOriginalWidth,
-                                        kOriginalHeight, &scene_summary));
+  MP_EXPECT_OK(AggregateKeyFrameResults(
+      GetDefaultKeyFrameInfos(), GetDefaultKeyFrameCropOptions(),
+      key_frame_crop_results, kOriginalWidth, kOriginalHeight, &scene_summary));
 
   EXPECT_FLOAT_EQ(scene_summary.key_frame_min_score(),
                   *std::min_element(scores.begin(), scores.end()));
@@ -697,8 +727,9 @@ TEST(UtilTest, AggregateKeyFrameResultsSetsScoreRange) {
 TEST(UtilTest, AggregateKeyFrameResultsSetsCropWindowSizeToTargetSize) {
   SceneKeyFrameCropSummary scene_summary;
   MP_EXPECT_OK(AggregateKeyFrameResults(
-      GetDefaultKeyFrameCropOptions(), GetDefaultKeyFrameCropResults(),
-      kOriginalWidth, kOriginalHeight, &scene_summary));
+      GetDefaultKeyFrameInfos(), GetDefaultKeyFrameCropOptions(),
+      GetDefaultKeyFrameCropResults(), kOriginalWidth, kOriginalHeight,
+      &scene_summary));
   EXPECT_EQ(scene_summary.crop_window_width(), kTargetWidth);
   EXPECT_EQ(scene_summary.crop_window_height(), kTargetHeight);
 }
@@ -710,9 +741,9 @@ TEST(UtilTest, AggregateKeyFrameResultsSetsCropWindowSizeExceedingTargetSize) {
   key_frame_crop_results[0].mutable_region()->set_width(kTargetWidth + 1);
   SceneKeyFrameCropSummary scene_summary;
 
-  MP_EXPECT_OK(AggregateKeyFrameResults(GetDefaultKeyFrameCropOptions(),
-                                        key_frame_crop_results, kOriginalWidth,
-                                        kOriginalHeight, &scene_summary));
+  MP_EXPECT_OK(AggregateKeyFrameResults(
+      GetDefaultKeyFrameInfos(), GetDefaultKeyFrameCropOptions(),
+      key_frame_crop_results, kOriginalWidth, kOriginalHeight, &scene_summary));
   EXPECT_EQ(scene_summary.crop_window_width(), kTargetWidth + 1);
   EXPECT_EQ(scene_summary.crop_window_height(), kTargetHeight);
 }
@@ -722,8 +753,9 @@ TEST(UtilTest, AggregateKeyFrameResultsSetsCropWindowSizeExceedingTargetSize) {
 TEST(UtilTest, AggregateKeyFrameResultsSetsHasSalientRegionTrue) {
   SceneKeyFrameCropSummary scene_summary;
   MP_EXPECT_OK(AggregateKeyFrameResults(
-      GetDefaultKeyFrameCropOptions(), GetDefaultKeyFrameCropResults(),
-      kOriginalWidth, kOriginalHeight, &scene_summary));
+      GetDefaultKeyFrameInfos(), GetDefaultKeyFrameCropOptions(),
+      GetDefaultKeyFrameCropResults(), kOriginalWidth, kOriginalHeight,
+      &scene_summary));
   EXPECT_TRUE(scene_summary.has_salient_region());
 }
 
@@ -736,9 +768,9 @@ TEST(UtilTest, AggregateKeyFrameResultsSetsHasSalientRegionFalse) {
   }
   SceneKeyFrameCropSummary scene_summary;
 
-  MP_EXPECT_OK(AggregateKeyFrameResults(GetDefaultKeyFrameCropOptions(),
-                                        key_frame_crop_results, kOriginalWidth,
-                                        kOriginalHeight, &scene_summary));
+  MP_EXPECT_OK(AggregateKeyFrameResults(
+      GetDefaultKeyFrameInfos(), GetDefaultKeyFrameCropOptions(),
+      key_frame_crop_results, kOriginalWidth, kOriginalHeight, &scene_summary));
   EXPECT_FALSE(scene_summary.has_salient_region());
 }
 
@@ -747,8 +779,9 @@ TEST(UtilTest, AggregateKeyFrameResultsSetsHasSalientRegionFalse) {
 TEST(UtilTest, AggregateKeyFrameResultsSetsHasRequiredSalientRegionTrue) {
   SceneKeyFrameCropSummary scene_summary;
   MP_EXPECT_OK(AggregateKeyFrameResults(
-      GetDefaultKeyFrameCropOptions(), GetDefaultKeyFrameCropResults(),
-      kOriginalWidth, kOriginalHeight, &scene_summary));
+      GetDefaultKeyFrameInfos(), GetDefaultKeyFrameCropOptions(),
+      GetDefaultKeyFrameCropResults(), kOriginalWidth, kOriginalHeight,
+      &scene_summary));
   EXPECT_TRUE(scene_summary.has_required_salient_region());
 }
 
@@ -761,9 +794,9 @@ TEST(UtilTest, AggregateKeyFrameResultsSetsHasRequiredSalientRegionFalse) {
   }
   SceneKeyFrameCropSummary scene_summary;
 
-  MP_EXPECT_OK(AggregateKeyFrameResults(GetDefaultKeyFrameCropOptions(),
-                                        key_frame_crop_results, kOriginalWidth,
-                                        kOriginalHeight, &scene_summary));
+  MP_EXPECT_OK(AggregateKeyFrameResults(
+      GetDefaultKeyFrameInfos(), GetDefaultKeyFrameCropOptions(),
+      key_frame_crop_results, kOriginalWidth, kOriginalHeight, &scene_summary));
   EXPECT_FALSE(scene_summary.has_required_salient_region());
 }
 
@@ -777,9 +810,9 @@ TEST(UtilTest, AggregateKeyFrameResultsSetsKeyFrameRequiredCropRegionUnion) {
   }
   SceneKeyFrameCropSummary scene_summary;
 
-  MP_EXPECT_OK(AggregateKeyFrameResults(GetDefaultKeyFrameCropOptions(),
-                                        key_frame_crop_results, kOriginalWidth,
-                                        kOriginalHeight, &scene_summary));
+  MP_EXPECT_OK(AggregateKeyFrameResults(
+      GetDefaultKeyFrameInfos(), GetDefaultKeyFrameCropOptions(),
+      key_frame_crop_results, kOriginalWidth, kOriginalHeight, &scene_summary));
   const auto& required_crop_region_union =
       scene_summary.key_frame_required_crop_region_union();
   EXPECT_EQ(required_crop_region_union.x(), 0);
@@ -799,9 +832,9 @@ TEST(UtilTest, AggregateKeyFrameResultsSetsFrameSuccessRate) {
   }
   SceneKeyFrameCropSummary scene_summary;
 
-  MP_EXPECT_OK(AggregateKeyFrameResults(GetDefaultKeyFrameCropOptions(),
-                                        key_frame_crop_results, kOriginalWidth,
-                                        kOriginalHeight, &scene_summary));
+  MP_EXPECT_OK(AggregateKeyFrameResults(
+      GetDefaultKeyFrameInfos(), GetDefaultKeyFrameCropOptions(),
+      key_frame_crop_results, kOriginalWidth, kOriginalHeight, &scene_summary));
   EXPECT_FLOAT_EQ(scene_summary.frame_success_rate(), success_rate);
 }
 
@@ -820,9 +853,9 @@ TEST(UtilTest, AggregateKeyFrameResultsSetsMotion) {
   }
   SceneKeyFrameCropSummary scene_summary;
 
-  MP_EXPECT_OK(AggregateKeyFrameResults(GetDefaultKeyFrameCropOptions(),
-                                        key_frame_crop_results, kOriginalWidth,
-                                        kOriginalHeight, &scene_summary));
+  MP_EXPECT_OK(AggregateKeyFrameResults(
+      GetDefaultKeyFrameInfos(), GetDefaultKeyFrameCropOptions(),
+      key_frame_crop_results, kOriginalWidth, kOriginalHeight, &scene_summary));
   EXPECT_FLOAT_EQ(scene_summary.horizontal_motion_amount(), motion_x);
   EXPECT_FLOAT_EQ(scene_summary.vertical_motion_amount(), motion_y);
 }

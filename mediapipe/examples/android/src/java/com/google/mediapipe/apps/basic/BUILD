@@ -73,7 +73,6 @@ android_binary(
         "binaryGraphName": "mobile_gpu.binarypb",
         "inputVideoStreamName": "input_video",
         "outputVideoStreamName": "output_video",
-        "flipFramesVertically": "True",
     },
     multidex = "native",
     deps = [

@@ -57,7 +57,7 @@ class GlThreadCollector {
       return active_threads_ == 0;
     };
     absl::MutexLock l(&mutex_);
-    mutex_.Await(absl::Condition(&done));
+    mutex_.Await(Condition(&done));
   }
 
   absl::Mutex mutex_;

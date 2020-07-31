@@ -322,20 +322,16 @@ class GlobalFactoryRegistry {
     return functions()->Register(name, std::move(func));
   }
 
-  // Invokes the specified factory function and returns the result.
-  // If using namespaces with this registry, the variant with a namespace
-  // argument should be used.
+  // Same as CreateByNameInNamespace but without a namespace.
   template <typename... Args2>
   static typename Functions::ReturnType CreateByName(const std::string& name,
                                                      Args2&&... args) {
-    return functions()->Invoke(name, std::forward<Args2>(args)...);
+    return CreateByNameInNamespace("", name, std::forward<Args2>(args)...);
   }
 
-  // Returns true if the specified factory function is available.
-  // If using namespaces with this registry, the variant with a namespace
-  // argument should be used.
+  // Same as IsRegistered(ns, name) but without a namespace.
   static bool IsRegistered(const std::string& name) {
-    return functions()->IsRegistered(name);
+    return functions()->IsRegistered("", name);
   }
 
   static std::unordered_set<std::string> GetRegisteredNames() {

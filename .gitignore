@@ -1,4 +1,8 @@
-bazel-*
+mediapipe/provisioning_profile.mobileprovision
+bazel-bin
+bazel-genfiles
+bazel-mediapipe-ioss
+bazel-out
+bazel-testlogs
 mediapipe/MediaPipe.xcodeproj
 mediapipe/MediaPipe.tulsiproj/*.tulsiconf-user
-mediapipe/provisioning_profile.mobileprovision

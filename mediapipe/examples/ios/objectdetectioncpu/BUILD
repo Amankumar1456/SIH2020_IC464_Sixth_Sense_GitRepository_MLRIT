@@ -21,11 +21,6 @@ load(
     "ios_application",
 )
 
-alias(
-    name = "objectdetectioncpu",
-    actual = "ObjectDetectionCpuApp",
-)
-
 ios_application(
     name = "ObjectDetectionCpuApp",
     bundle_id = "com.google.mediapipe.ObjectDetectionCpu",

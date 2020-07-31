@@ -14,7 +14,6 @@
 #
 
 load("//mediapipe/framework/port:build_config.bzl", "mediapipe_cc_proto_library")
-load("@bazel_skylib//lib:selects.bzl", "selects")
 
 licenses(["notice"])  # Apache 2.0
 
@@ -203,13 +202,6 @@ cc_library(
     alwayslink = 1,
 )
 
-selects.config_setting_group(
-    name = "gpu_inference_disabled",
-    match_any = [
-        "//mediapipe/gpu:disable_gpu",
-    ],
-)
-
 cc_library(
     name = "tflite_inference_calculator",
     srcs = ["tflite_inference_calculator.cc"],
@@ -234,14 +226,13 @@ cc_library(
         "@com_google_absl//absl/memory",
         "//mediapipe/framework:calculator_framework",
         "//mediapipe/util:resource_util",
-        "//mediapipe/util/tflite:config",
         "@org_tensorflow//tensorflow/lite:framework",
         "@org_tensorflow//tensorflow/lite/delegates/xnnpack:xnnpack_delegate",
         "@org_tensorflow//tensorflow/lite/kernels:builtin_ops",
         "//mediapipe/framework/stream_handler:fixed_size_input_stream_handler",
         "//mediapipe/framework/port:ret_check",
-    ] + selects.with_or({
-        ":gpu_inference_disabled": [],
+    ] + select({
+        "//mediapipe/gpu:disable_gpu": [],
         "//mediapipe:ios": [
             "//mediapipe/gpu:MPPMetalHelper",
             "//mediapipe/gpu:MPPMetalUtil",
@@ -294,7 +285,6 @@ cc_library(
     }),
     visibility = ["//visibility:public"],
     deps = [
-        "//mediapipe/util/tflite:config",
         ":util",
         ":tflite_converter_calculator_cc_proto",
         "//mediapipe/util:resource_util",
@@ -305,25 +295,22 @@ cc_library(
         "//mediapipe/framework/port:ret_check",
         "@org_tensorflow//tensorflow/lite:framework",
         "@org_tensorflow//tensorflow/lite/kernels:builtin_ops",
-    ] + selects.with_or({
-        ":gpu_inference_disabled": [],
+    ] + select({
+        "//mediapipe/gpu:disable_gpu": [],
         "//mediapipe:ios": [
             "//mediapipe/gpu:MPPMetalUtil",
+            "//mediapipe/gpu:gpu_buffer",
             "//mediapipe/gpu:MPPMetalHelper",
             "//mediapipe/objc:mediapipe_framework_ios",
             "@org_tensorflow//tensorflow/lite/delegates/gpu:metal_delegate",
         ],
         "//conditions:default": [
+            "//mediapipe/gpu:gpu_buffer",
             "//mediapipe/gpu:gl_calculator_helper",
             "@org_tensorflow//tensorflow/lite/delegates/gpu:gl_delegate",
             "@org_tensorflow//tensorflow/lite/delegates/gpu/gl:gl_buffer",
             "@org_tensorflow//tensorflow/lite/delegates/gpu/gl:gl_program",
             "@org_tensorflow//tensorflow/lite/delegates/gpu/gl:gl_shader",
-        ],
-    }) + select({
-        "//mediapipe/gpu:disable_gpu": [],
-        "//conditions:default": [
-            "//mediapipe/gpu:gpu_buffer",
         ],
     }),
     alwayslink = 1,
@@ -361,8 +348,8 @@ cc_library(
         "//mediapipe/framework:calculator_framework",
         "//mediapipe/util:resource_util",
         "@org_tensorflow//tensorflow/lite:framework",
-    ] + selects.with_or({
-        ":gpu_inference_disabled": [],
+    ] + select({
+        "//mediapipe/gpu:disable_gpu": [],
         "//mediapipe:ios": [],
         "//conditions:default": [
             "//mediapipe/gpu:gl_calculator_helper",
@@ -417,7 +404,6 @@ cc_library(
     }),
     visibility = ["//visibility:public"],
     deps = [
-        "//mediapipe/util/tflite:config",
         ":util",
         ":tflite_tensors_to_detections_calculator_cc_proto",
         "//mediapipe/framework/formats:detection_cc_proto",
@@ -429,8 +415,8 @@ cc_library(
         "//mediapipe/framework/formats/object_detection:anchor_cc_proto",
         "//mediapipe/framework/port:ret_check",
         "@org_tensorflow//tensorflow/lite:framework",
-    ] + selects.with_or({
-        ":gpu_inference_disabled": [],
+    ] + select({
+        "//mediapipe/gpu:disable_gpu": [],
         "//mediapipe:ios": [
             "//mediapipe/gpu:MPPMetalUtil",
             "//mediapipe/gpu:gpu_buffer",
@@ -506,8 +492,6 @@ cc_library(
     alwayslink = 1,
 )
 
-# To run this with native GPU on Linux, use:
-# bazel test //mediapipe/calculators/tflite:tflite_inference_calculator_test --copt=-DTFLITE_GPU_EXTRA_GLES_DEPS --copt=-DMESA_EGL_NO_X11_HEADERS --copt=-DEGL_NO_X11 --config=grte_v5 --test_strategy=local
 cc_test(
     name = "tflite_inference_calculator_test",
     srcs = ["tflite_inference_calculator_test.cc"],

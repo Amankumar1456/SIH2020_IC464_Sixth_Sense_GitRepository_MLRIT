@@ -22,23 +22,19 @@
 #include "mediapipe/framework/formats/matrix.h"
 #include "mediapipe/framework/port/ret_check.h"
 #include "mediapipe/util/resource_util.h"
-#include "mediapipe/util/tflite/config.h"
 #include "tensorflow/lite/error_reporter.h"
 #include "tensorflow/lite/interpreter.h"
 
-#ifndef MEDIAPIPE_DISABLE_GPU
-#include "mediapipe/gpu/gpu_buffer.h"
-#endif  // MEDIAPIPE_DISABLE_GPU
-
-#if MEDIAPIPE_TFLITE_GL_INFERENCE
+#if !defined(MEDIAPIPE_DISABLE_GL_COMPUTE)
 #include "mediapipe/gpu/gl_calculator_helper.h"
+#include "mediapipe/gpu/gpu_buffer.h"
 #include "tensorflow/lite/delegates/gpu/gl/gl_buffer.h"
 #include "tensorflow/lite/delegates/gpu/gl/gl_program.h"
 #include "tensorflow/lite/delegates/gpu/gl/gl_shader.h"
 #include "tensorflow/lite/delegates/gpu/gl_delegate.h"
-#endif  // MEDIAPIPE_TFLITE_GL_INFERENCE
+#endif  //  !MEDIAPIPE_DISABLE_GPU
 
-#if MEDIAPIPE_TFLITE_METAL_INFERENCE
+#if defined(MEDIAPIPE_IOS)
 #import <CoreVideo/CoreVideo.h>
 #import <Metal/Metal.h>
 #import <MetalKit/MetalKit.h>
@@ -47,7 +43,13 @@
 #include "mediapipe/gpu/MPPMetalUtil.h"
 #include "mediapipe/gpu/gpu_buffer.h"
 #include "tensorflow/lite/delegates/gpu/metal_delegate.h"
-#endif  // MEDIAPIPE_TFLITE_METAL_INFERENCE
+#endif  // iOS
+
+#if !defined(MEDIAPIPE_DISABLE_GL_COMPUTE)
+typedef ::tflite::gpu::gl::GlBuffer GpuTensor;
+#elif defined(MEDIAPIPE_IOS)
+typedef id<MTLBuffer> GpuTensor;
+#endif
 
 namespace {
 constexpr int kWorkgroupSize = 8;  // Block size for GPU shader.
@@ -71,7 +73,7 @@ constexpr char kMatrixTag[] = "MATRIX";
 namespace mediapipe {
 
 namespace {
-#if MEDIAPIPE_TFLITE_GL_INFERENCE
+#if !defined(MEDIAPIPE_DISABLE_GL_COMPUTE)
 using ::tflite::gpu::gl::CreateReadWriteShaderStorageBuffer;
 using ::tflite::gpu::gl::GlProgram;
 using ::tflite::gpu::gl::GlShader;
@@ -81,13 +83,13 @@ struct GPUData {
   GlShader shader;
   GlProgram program;
 };
-#elif MEDIAPIPE_TFLITE_METAL_INFERENCE
+#elif defined(MEDIAPIPE_IOS)
 struct GPUData {
   int elements = 1;
   GpuTensor buffer;
   id<MTLComputePipelineState> pipeline_state;
 };
-#endif  // MEDIAPIPE_TFLITE_GL_INFERENCE
+#endif
 
 }  // namespace
 
@@ -155,13 +157,13 @@ class TfLiteConverterCalculator : public CalculatorBase {
 
   std::unique_ptr<tflite::Interpreter> interpreter_ = nullptr;
 
-#if MEDIAPIPE_TFLITE_GL_INFERENCE
+#if !defined(MEDIAPIPE_DISABLE_GL_COMPUTE)
   mediapipe::GlCalculatorHelper gpu_helper_;
   std::unique_ptr<GPUData> gpu_data_out_;
-#elif MEDIAPIPE_TFLITE_METAL_INFERENCE
+#elif defined(MEDIAPIPE_IOS)
   MPPMetalHelper* gpu_helper_ = nullptr;
   std::unique_ptr<GPUData> gpu_data_out_;
-#endif  // MEDIAPIPE_TFLITE_GL_INFERENCE
+#endif
 
   bool initialized_ = false;
   bool use_gpu_ = false;
@@ -176,18 +178,6 @@ class TfLiteConverterCalculator : public CalculatorBase {
 };
 REGISTER_CALCULATOR(TfLiteConverterCalculator);
 
-namespace {
-template <class CC>
-bool ShouldUseGpu(CC* cc) {
-#if MEDIAPIPE_TFLITE_GPU_SUPPORTED
-  return cc->Inputs().HasTag(kGpuBufferTag) ||
-         cc->Outputs().HasTag(kTensorsGpuTag);
-#else
-  return false;
-#endif  // MEDIAPIPE_TFLITE_GPU_SUPPORTED
-}
-}  // namespace
-
 ::mediapipe::Status TfLiteConverterCalculator::GetContract(
     CalculatorContract* cc) {
   // Confirm only one of the input streams is present.
@@ -199,31 +189,37 @@ bool ShouldUseGpu(CC* cc) {
   RET_CHECK(cc->Outputs().HasTag(kTensorsTag) ^
             cc->Outputs().HasTag(kTensorsGpuTag));
 
+  bool use_gpu = false;
+
   if (cc->Inputs().HasTag(kImageFrameTag)) {
     cc->Inputs().Tag(kImageFrameTag).Set<ImageFrame>();
   }
   if (cc->Inputs().HasTag(kMatrixTag)) {
     cc->Inputs().Tag(kMatrixTag).Set<Matrix>();
   }
-#ifndef MEDIAPIPE_DISABLE_GPU
+#if !defined(MEDIAPIPE_DISABLE_GPU) && !defined(__EMSCRIPTEN__)
   if (cc->Inputs().HasTag(kGpuBufferTag)) {
     cc->Inputs().Tag(kGpuBufferTag).Set<mediapipe::GpuBuffer>();
+    use_gpu |= true;
   }
-#endif  // MEDIAPIPE_DISABLE_GPU
+#endif  //  !MEDIAPIPE_DISABLE_GPU
 
   if (cc->Outputs().HasTag(kTensorsTag)) {
     cc->Outputs().Tag(kTensorsTag).Set<std::vector<TfLiteTensor>>();
   }
+#if !defined(MEDIAPIPE_DISABLE_GPU) && !defined(__EMSCRIPTEN__)
   if (cc->Outputs().HasTag(kTensorsGpuTag)) {
     cc->Outputs().Tag(kTensorsGpuTag).Set<std::vector<GpuTensor>>();
+    use_gpu |= true;
   }
+#endif  //  !MEDIAPIPE_DISABLE_GPU
 
-  if (ShouldUseGpu(cc)) {
-#if MEDIAPIPE_TFLITE_GL_INFERENCE
+  if (use_gpu) {
+#if !defined(MEDIAPIPE_DISABLE_GL_COMPUTE)
     MP_RETURN_IF_ERROR(mediapipe::GlCalculatorHelper::UpdateContract(cc));
-#elif MEDIAPIPE_TFLITE_METAL_INFERENCE
+#elif defined(MEDIAPIPE_IOS)
     MP_RETURN_IF_ERROR([MPPMetalHelper updateContract:cc]);
-#endif  // MEDIAPIPE_TFLITE_GL_INFERENCE
+#endif
   }
 
   // Assign this calculator's default InputStreamHandler.
@@ -237,7 +233,14 @@ bool ShouldUseGpu(CC* cc) {
 
   MP_RETURN_IF_ERROR(LoadOptions(cc));
 
-  use_gpu_ = ShouldUseGpu(cc);
+  if (cc->Inputs().HasTag(kGpuBufferTag) ||
+      cc->Outputs().HasTag(kGpuBufferTag)) {
+#if !defined(MEDIAPIPE_DISABLE_GPU) && !defined(__EMSCRIPTEN__)
+    use_gpu_ = true;
+#else
+    RET_CHECK_FAIL() << "GPU processing not enabled.";
+#endif
+  }
 
   if (use_gpu_) {
     // Cannot mix CPU/GPU streams.
@@ -245,12 +248,12 @@ bool ShouldUseGpu(CC* cc) {
               cc->Outputs().HasTag(kTensorsGpuTag));
     // Cannot use quantization.
     use_quantized_tensors_ = false;
-#if MEDIAPIPE_TFLITE_GL_INFERENCE
+#if !defined(MEDIAPIPE_DISABLE_GL_COMPUTE)
     MP_RETURN_IF_ERROR(gpu_helper_.Open(cc));
-#elif MEDIAPIPE_TFLITE_METAL_INFERENCE
+#elif defined(MEDIAPIPE_IOS)
     gpu_helper_ = [[MPPMetalHelper alloc] initWithCalculatorContext:cc];
     RET_CHECK(gpu_helper_);
-#endif  // MEDIAPIPE_TFLITE_GL_INFERENCE
+#endif
   } else {
     interpreter_ = absl::make_unique<tflite::Interpreter>();
     interpreter_->AddTensors(1);
@@ -279,12 +282,12 @@ bool ShouldUseGpu(CC* cc) {
 }
 
 ::mediapipe::Status TfLiteConverterCalculator::Close(CalculatorContext* cc) {
-  interpreter_.reset();
-#if MEDIAPIPE_TFLITE_GL_INFERENCE
+#if !defined(MEDIAPIPE_DISABLE_GL_COMPUTE)
   gpu_helper_.RunInGlContext([this] { gpu_data_out_.reset(); });
-#elif MEDIAPIPE_TFLITE_METAL_INFERENCE
+#endif
+#if defined(MEDIAPIPE_IOS)
   gpu_data_out_.reset();
-#endif  // MEDIAPIPE_TFLITE_GL_INFERENCE
+#endif
   return ::mediapipe::OkStatus();
 }
 
@@ -315,14 +318,8 @@ bool ShouldUseGpu(CC* cc) {
         RET_CHECK(format != mediapipe::ImageFormat::VEC32F1)
             << "Only 8-bit input images are supported for quantization.";
         quant.type = kTfLiteAffineQuantization;
-        auto quant_params = static_cast<TfLiteAffineQuantization*>(
-            malloc(sizeof(TfLiteAffineQuantization)));
-        quant_params->scale = TfLiteFloatArrayCreate(1);
-        quant_params->scale->data[0] = 1.0;
-        quant_params->zero_point = TfLiteIntArrayCreate(1);
-        quant_params->zero_point->data[0] = 0;
-        quant_params->quantized_dimension = 0;
-        quant.params = quant_params;
+        quant.params = nullptr;
+        // Optional: Set 'quant' quantization params here if needed.
         interpreter_->SetTensorParametersReadWrite(0, kTfLiteUInt8, "",
                                                    {channels_preserved}, quant);
       } else {
@@ -417,7 +414,7 @@ bool ShouldUseGpu(CC* cc) {
 
 ::mediapipe::Status TfLiteConverterCalculator::ProcessGPU(
     CalculatorContext* cc) {
-#if MEDIAPIPE_TFLITE_GL_INFERENCE
+#if !defined(MEDIAPIPE_DISABLE_GL_COMPUTE)
   // GpuBuffer to tflite::gpu::GlBuffer conversion.
   const auto& input =
       cc->Inputs().Tag(kGpuBufferTag).Get<mediapipe::GpuBuffer>();
@@ -454,7 +451,7 @@ bool ShouldUseGpu(CC* cc) {
   cc->Outputs()
       .Tag(kTensorsGpuTag)
       .Add(output_tensors.release(), cc->InputTimestamp());
-#elif MEDIAPIPE_TFLITE_METAL_INFERENCE
+#elif defined(MEDIAPIPE_IOS)
   // GpuBuffer to id<MTLBuffer> conversion.
   const auto& input =
       cc->Inputs().Tag(kGpuBufferTag).Get<mediapipe::GpuBuffer>();
@@ -493,13 +490,13 @@ bool ShouldUseGpu(CC* cc) {
       .Add(output_tensors.release(), cc->InputTimestamp());
 #else
   RET_CHECK_FAIL() << "GPU processing is not enabled.";
-#endif  // MEDIAPIPE_TFLITE_GL_INFERENCE
+#endif
 
   return ::mediapipe::OkStatus();
 }
 
 ::mediapipe::Status TfLiteConverterCalculator::InitGpu(CalculatorContext* cc) {
-#if MEDIAPIPE_TFLITE_GPU_SUPPORTED
+#if !defined(MEDIAPIPE_DISABLE_GPU) && !defined(__EMSCRIPTEN__)
   // Get input image sizes.
   const auto& input =
       cc->Inputs().Tag(kGpuBufferTag).Get<mediapipe::GpuBuffer>();
@@ -515,9 +512,9 @@ bool ShouldUseGpu(CC* cc) {
     RET_CHECK_FAIL() << "Unsupported GPU input format.";
   if (include_alpha && (format != mediapipe::ImageFormat::SRGBA))
     RET_CHECK_FAIL() << "Num input channels is less than desired output.";
-#endif  // MEDIAPIPE_TFLITE_GPU_SUPPORTED
+#endif  //  !MEDIAPIPE_DISABLE_GPU
 
-#if MEDIAPIPE_TFLITE_GL_INFERENCE
+#if !defined(MEDIAPIPE_DISABLE_GL_COMPUTE)
   MP_RETURN_IF_ERROR(gpu_helper_.RunInGlContext(
       [this, &include_alpha, &input, &single_channel]() -> ::mediapipe::Status {
         // Device memory.
@@ -562,7 +559,7 @@ bool ShouldUseGpu(CC* cc) {
         return ::mediapipe::OkStatus();
       }));
 
-#elif MEDIAPIPE_TFLITE_METAL_INFERENCE
+#elif defined(MEDIAPIPE_IOS)
 
   RET_CHECK(include_alpha)
       << "iOS GPU inference currently accepts only RGBA input.";
@@ -619,7 +616,7 @@ bool ShouldUseGpu(CC* cc) {
   RET_CHECK(gpu_data_out_->pipeline_state != nil)
       << "Couldn't create pipeline state "
       << [[error localizedDescription] UTF8String];
-#endif  // MEDIAPIPE_TFLITE_GL_INFERENCE
+#endif
 
   return ::mediapipe::OkStatus();
 }

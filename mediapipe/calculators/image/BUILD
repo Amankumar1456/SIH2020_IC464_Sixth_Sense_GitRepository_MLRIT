@@ -258,7 +258,6 @@ cc_library(
         ":bilateral_filter_calculator_cc_proto",
         "//mediapipe/framework:calculator_options_cc_proto",
         "//mediapipe/framework/formats:image_format_cc_proto",
-        "@com_google_absl//absl/strings",
         "//mediapipe/framework:calculator_framework",
         "//mediapipe/framework/formats:image_frame",
         "//mediapipe/framework/formats:image_frame_opencv",

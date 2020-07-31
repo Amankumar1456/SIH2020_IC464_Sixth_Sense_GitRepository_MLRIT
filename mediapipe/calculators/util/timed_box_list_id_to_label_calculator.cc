@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "absl/container/node_hash_map.h"
 #include "mediapipe/calculators/util/timed_box_list_id_to_label_calculator.pb.h"
 #include "mediapipe/framework/calculator_framework.h"
 #include "mediapipe/framework/packet.h"
@@ -54,7 +53,7 @@ class TimedBoxListIdToLabelCalculator : public CalculatorBase {
   ::mediapipe::Status Process(CalculatorContext* cc) override;
 
  private:
-  absl::node_hash_map<int, std::string> label_map_;
+  std::unordered_map<int, std::string> label_map_;
 };
 REGISTER_CALCULATOR(TimedBoxListIdToLabelCalculator);
 

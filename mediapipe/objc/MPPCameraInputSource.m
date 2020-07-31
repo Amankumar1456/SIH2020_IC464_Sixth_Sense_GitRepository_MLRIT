@@ -34,7 +34,6 @@
   BOOL _setupDone;
   BOOL _useDepth;
   BOOL _useCustomOrientation;
-  BOOL _videoMirrored;
 }
 
 - (instancetype)init {
@@ -118,22 +117,6 @@
 
   _orientation = orientation;
   _useCustomOrientation = YES;
-  _setupDone = NO;
-  if (wasRunning) {
-    [self start];
-  }
-}
-
-- (void)setVideoMirrored:(BOOL)videoMirrored {
-  if (videoMirrored == _videoMirrored) {
-    return;
-  }
-
-  BOOL wasRunning = [self isRunning];
-  if (wasRunning) {
-    [self stop];
-  }
-  _videoMirrored = videoMirrored;
   _setupDone = NO;
   if (wasRunning) {
     [self start];
@@ -267,11 +250,6 @@
     if ([connection isCameraIntrinsicMatrixDeliverySupported]) {
       [connection setCameraIntrinsicMatrixDeliveryEnabled:YES];
     }
-  }
-
-  if (_videoMirrored) {
-    AVCaptureConnection* connection = [_videoDataOutput connectionWithMediaType:AVMediaTypeVideo];
-    connection.videoMirrored = _videoMirrored;
   }
 
   _setupDone = YES;
