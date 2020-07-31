@@ -1,1 +1,0 @@
-# SIH2020_IC464_Sixth_Sense_GitRepository_MLRIT
