@@ -151,7 +151,7 @@ REGISTER_CALCULATOR(HandGestureRecognitionCalculator);
 	float l20x= landmarkList.landmark(20).x();
 	float l20y= landmarkList.landmark(20).y();
 	float l20z= landmarkList.landmark(20).z();
-	
+	/*
 	LOG(INFO) << "\n\n";
 	
 	LOG(INFO) << "Landmark 0 coordinates : " << l0x <<"\t"<<l0y<<"\t"<<l0z;
@@ -177,12 +177,33 @@ REGISTER_CALCULATOR(HandGestureRecognitionCalculator);
 	LOG(INFO) << "Landmark 20 coordinates : " << l20x <<"\t"<<l20y<<"\t"<<l20z;
 	
 	LOG(INFO) << "\n\n";
-	
+	*/
 	if (width < 0.01 || height < 0.01)
     {
         LOG(INFO) << "No Hand Detected";
         return ::mediapipe::OkStatus();
     }
+	
+	if(l6y<l7y&&l6y<l8y&&l10y<l11y&&l10y<l12y&&l14y<l15y&&l14y<l16y&&l18y<l19y&&l18y<l20y) {
+		if(l4y>l8y||l4y>l12y||l4y>l16y||l4y>l20y) {
+			LOG(INFO) << "E";
+			return ::mediapipe::OkStatus();
+		}
+		else {
+			if(l4x<l6x) {
+				LOG(INFO) << "A";
+				return ::mediapipe::OkStatus();
+			}
+			else if(l4z<l7z || l4z<l11z || l4z<l15z) {
+				LOG(INFO) << "S";
+				return ::mediapipe::OkStatus();
+			}
+			else if((l4y<l10y && l4y<l6y) && (l4x<l10x)) {
+				LOG(INFO) << "T";
+				return ::mediapipe::OkStatus();
+			}
+		}
+	}
 	
     return ::mediapipe::OkStatus();
 }
