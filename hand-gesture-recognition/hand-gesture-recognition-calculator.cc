@@ -241,22 +241,6 @@ REGISTER_CALCULATOR(HandGestureRecognitionCalculator);
 			return ::mediapipe::OkStatus();
 		}
 	}
-	else if(l20y<l19y && l20y<l18y && l16y<l15y && l16y<l14y && l12y<l11y && l12y<l10y && l8y>l7y && l8y>l6y && l4x>l5x) {
-		LOG(INFO) << "F";
-		return ::mediapipe::OkStatus();
-	}
-	else if(l20y<l19y && l20y<l18y && l16y<l15y && l16y<l14y && l12y<l11y && l12y<l10y && l8y<l7y && l8y<l6y && l4x>l5x) {
-		LOG(INFO) << "B";
-		return ::mediapipe::OkStatus();
-	}
-	else if(l20y<l19y && l20y<l18y && l16y>l15y && l16y>l14y && l12y>l11y && l12y>l10y && l8y>l7y && l8y>l6y && l4x>l5x) {
-		LOG(INFO) << "I";
-		return ::mediapipe::OkStatus();
-	}
-	else if(l20x<l19x && l20x<l18x && l16x>l15x && l16x>l14x && l12x>l11x && l12x>l10x && l8x>l7x && l8x>l6x && l4y>l5y) {
-		LOG(INFO) << "J";
-		return ::mediapipe::OkStatus();
-	}
 	
     return ::mediapipe::OkStatus();
 }
