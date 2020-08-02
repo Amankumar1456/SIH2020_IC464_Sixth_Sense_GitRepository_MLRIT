@@ -28,6 +28,13 @@ public:
     ::mediapipe::Status Open(CalculatorContext *cc) override;
 
     ::mediapipe::Status Process(CalculatorContext *cc) override;
+
+private:
+    float get_Euclidean_DistanceAB(float a_x, float a_y, float b_x, float b_y)
+    {
+        float dist = std::pow(a_x - b_x, 2) + pow(a_y - b_y, 2);
+        return std::sqrt(dist);
+    }
 };
 
 REGISTER_CALCULATOR(HandGestureRecognitionCalculator);
@@ -151,7 +158,7 @@ REGISTER_CALCULATOR(HandGestureRecognitionCalculator);
 	float l20x= landmarkList.landmark(20).x();
 	float l20y= landmarkList.landmark(20).y();
 	float l20z= landmarkList.landmark(20).z();
-	
+	/*
 	LOG(INFO) << "\n\n";
 	
 	LOG(INFO) << "Landmark 0 coordinates : " << l0x <<"\t"<<l0y<<"\t"<<l0z;
@@ -177,12 +184,63 @@ REGISTER_CALCULATOR(HandGestureRecognitionCalculator);
 	LOG(INFO) << "Landmark 20 coordinates : " << l20x <<"\t"<<l20y<<"\t"<<l20z;
 	
 	LOG(INFO) << "\n\n";
-	
+	*/
 	if (width < 0.01 || height < 0.01)
     {
         LOG(INFO) << "No Hand Detected";
         return ::mediapipe::OkStatus();
     }
+	
+	if(l6y<l7y&&l6y<l8y&&l10y<l11y&&l10y<l12y&&l14y<l15y&&l14y<l16y&&l18y<l19y&&l18y<l20y) {
+		if(l4y>l8y||l4y>l12y||l4y>l16y||l4y>l20y) {
+			LOG(INFO) << "E";
+			return ::mediapipe::OkStatus();
+		}
+		else {
+			if(l4x<l6x) {
+				LOG(INFO) << "A";
+				return ::mediapipe::OkStatus();
+			}
+			else if(l4z<l7z || l4z<l11z || l4z<l15z) {
+				LOG(INFO) << "S";
+				return ::mediapipe::OkStatus();
+			}
+			else if((l4y<l10y && l4y<l6y) && (l4x<l10x)) {
+				LOG(INFO) << "T";
+				return ::mediapipe::OkStatus();
+			}
+		}
+	}
+	else if(l2x<l4x && l16y>l15y && l16y>l14y && l20y>l19y && l20y>l18y && l8y<l7y && l8y<l6y && l12y<l11y && l12y<l10y) {
+		float d812 = get_Euclidean_DistanceAB(l8x, l8y, l12x, l12y);
+		float d711 = get_Euclidean_DistanceAB(l7x, l7y, l11x, l11y);
+		if(d812 > 0.1) {
+			LOG(INFO) << "V";
+			return ::mediapipe::OkStatus();
+		}
+		else if(l7z<l11z) {
+			LOG(INFO) << "R";
+			return ::mediapipe::OkStatus();
+		}
+		else if(d711 < 0.1) {
+			LOG(INFO) << "U";
+			return ::mediapipe::OkStatus();
+		}
+	}
+	else if(get_Euclidean_DistanceAB(l4x, l4y, l12x, l12y)<0.1 && get_Euclidean_DistanceAB(l4x, l4y, l16x, l16y)<0.1 && get_Euclidean_DistanceAB(l4x, l4y, l20x, l20y)<0.1 && l8y<l7y && l8y<l6y) {
+		LOG(INFO) << "D";
+		return ::mediapipe::OkStatus();
+	}
+	else if(l12y>l11y && l12y>l10y && l16y>l15y && l16y>l14y && l20y>l19y && l20y>l18y && l4x>l5x) {
+		if(l8y<l7y && l8y<l6y && abs(l8z-l7z)>5) {
+			LOG(INFO) << "X";
+			return ::mediapipe::OkStatus();
+		}
+		else if(l8y<l7y && l8y<l6y) {
+			LOG(INFO) << "Z";
+			return ::mediapipe::OkStatus();
+		}
+	}
 	
     return ::mediapipe::OkStatus();
 }
