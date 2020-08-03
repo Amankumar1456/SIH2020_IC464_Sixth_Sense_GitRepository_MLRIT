@@ -7,6 +7,7 @@ input_stream: "DETECTIONS:detections"
 input_stream: "LANDMARKS:landmarks"
 input_stream: "NORM_RECT:rect"
 input_stream: "HANDEDNESS:handedness"
+input_stream: "RECOGNIZED_HAND_GESTURE:recognized_hand_gesture"
 output_stream: "IMAGE:output_image"
 
 # Converts classification to drawing primitives for annotation overlay.
@@ -117,7 +118,8 @@ node {
   input_stream: "IMAGE:input_image"
   input_stream: "detection_render_data"
   input_stream: "landmark_render_data"
-  input_stream: "handedness_render_data"
+ input_stream: "handedness_render_data"
   input_stream: "rect_render_data"
+  input_stream: "RECOGNIZED_HAND_GESTURE:recognized_hand_gesture"
   output_stream: "IMAGE:output_image"
 }

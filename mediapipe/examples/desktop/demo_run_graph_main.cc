@@ -28,7 +28,7 @@
 
 constexpr char kInputStream[] = "input_video";
 constexpr char kOutputStream[] = "output_video";
-constexpr char kWindowName[] = "MediaPipe";
+constexpr char kWindowName[] = "SAARTHI";
 
 DEFINE_string(
     calculator_graph_config_file, "",
@@ -69,8 +69,8 @@ DEFINE_string(output_video_path, "",
   if (!save_video) {
     cv::namedWindow(kWindowName, /*flags=WINDOW_AUTOSIZE*/ 1);
 #if (CV_MAJOR_VERSION >= 3) && (CV_MINOR_VERSION >= 2)
-    capture.set(cv::CAP_PROP_FRAME_WIDTH, 640);
-    capture.set(cv::CAP_PROP_FRAME_HEIGHT, 480);
+    capture.set(cv::CAP_PROP_FRAME_WIDTH, 1080);
+    capture.set(cv::CAP_PROP_FRAME_HEIGHT, 720);
     capture.set(cv::CAP_PROP_FPS, 30);
 #endif
   }
