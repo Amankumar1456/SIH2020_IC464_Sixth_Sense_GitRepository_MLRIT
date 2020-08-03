@@ -1,16 +1,29 @@
 #include <cmath>
 #include <stdlib.h>
+<<<<<<< HEAD
+#include <iostream>
+#include <cstring>
+=======
+>>>>>>> 3a7d6a46c987f0ce67fc909c3c407a9997a71478
 #include "mediapipe/framework/calculator_framework.h"
 #include "mediapipe/framework/formats/landmark.pb.h"
 #include "mediapipe/framework/formats/rect.pb.h"
 
 namespace mediapipe
 {
+<<<<<<< HEAD
+std::string text = "";
+=======
 
+>>>>>>> 3a7d6a46c987f0ce67fc909c3c407a9997a71478
 namespace
 {
 constexpr char normRectTag[] = "NORM_RECT";
 constexpr char normalizedLandmarkListTag[] = "NORM_LANDMARKS";
+<<<<<<< HEAD
+constexpr char recognizedHandGestureTag[] = "RECOGNIZED_HAND_GESTURE";
+=======
+>>>>>>> 3a7d6a46c987f0ce67fc909c3c407a9997a71478
 }
 /*
 // Graph config:
@@ -30,6 +43,10 @@ public:
     ::mediapipe::Status Process(CalculatorContext *cc) override;
 
 private:
+<<<<<<< HEAD
+
+=======
+>>>>>>> 3a7d6a46c987f0ce67fc909c3c407a9997a71478
     float get_Euclidean_DistanceAB(float a_x, float a_y, float b_x, float b_y)
     {
         float dist = std::pow(a_x - b_x, 2) + pow(a_y - b_y, 2);
@@ -47,7 +64,14 @@ REGISTER_CALCULATOR(HandGestureRecognitionCalculator);
 
     RET_CHECK(cc->Inputs().HasTag(normRectTag));
     cc->Inputs().Tag(normRectTag).Set<NormalizedRect>();
+<<<<<<< HEAD
+	
+	RET_CHECK(cc->Outputs().HasTag(recognizedHandGestureTag));
+    cc->Outputs().Tag(recognizedHandGestureTag).Set<std::string>();
+	
+=======
 
+>>>>>>> 3a7d6a46c987f0ce67fc909c3c407a9997a71478
     return ::mediapipe::OkStatus();
 }
 
@@ -61,14 +85,38 @@ REGISTER_CALCULATOR(HandGestureRecognitionCalculator);
 ::mediapipe::Status HandGestureRecognitionCalculator::Process(
     CalculatorContext *cc)
 {
+<<<<<<< HEAD
+	std::string *recognized_hand_gesture;
+	
+=======
+>>>>>>> 3a7d6a46c987f0ce67fc909c3c407a9997a71478
     // hand closed (red) rectangle
     const auto rect = &(cc->Inputs().Tag(normRectTag).Get<NormalizedRect>());
     float width = rect->width();
     float height = rect->height();
 	float rot = rect->rotation();
+<<<<<<< HEAD
+	char cur = '\u0000';
+
+    if (width < 0.01 || height < 0.01)
+    {
+        LOG(INFO) << "No Hand Detected";
+		recognized_hand_gesture = new std::string("");
+        cc->Outputs()
+            .Tag(recognizedHandGestureTag)
+            .Add(recognized_hand_gesture, cc->InputTimestamp());
+        return ::mediapipe::OkStatus();
+    }
+	/*recognized_hand_gesture = new std::string("Please call me ");
+	cc->Outputs()
+        .Tag(recognizedHandGestureTag)
+        .Add(recognized_hand_gesture, cc->InputTimestamp());
+    return ::mediapipe::OkStatus();*/
+=======
 
     
 
+>>>>>>> 3a7d6a46c987f0ce67fc909c3c407a9997a71478
     const auto &landmarkList = cc->Inputs()
                                    .Tag(normalizedLandmarkListTag)
                                    .Get<mediapipe::NormalizedLandmarkList>();
@@ -183,6 +231,199 @@ REGISTER_CALCULATOR(HandGestureRecognitionCalculator);
 	LOG(INFO) << "Landmark 19 coordinates : " << l19x <<"\t"<<l19y<<"\t"<<l19z;
 	LOG(INFO) << "Landmark 20 coordinates : " << l20x <<"\t"<<l20y<<"\t"<<l20z;
 	
+<<<<<<< HEAD
+	LOG(INFO) << "\n\n";*/
+	
+	
+	
+	//LOG(INFO) << rot;
+	
+	char orientation = 'n';
+	if(rot<0.5 && rot>-0.5)
+		orientation = 'u';
+	else if(rot<-0.5 && rot>-1.5)
+		orientation = 'l';
+	else if(rot<-1.5)
+		orientation = 'd';
+	
+	if(orientation == 'n') {
+		return ::mediapipe::OkStatus();
+	}
+	
+	//LOG(INFO) << orientation;
+	
+	if(orientation=='u' && l4y<l3y && l8y<l7y && l12y<l11y && l16y<l15y && l20y<l19y) {
+		recognized_hand_gesture = new std::string(" ");
+		cur = ' ';
+	}
+	
+	if(orientation=='u' && l6y<l7y&&l6y<l8y&&l10y<l11y&&l10y<l12y&&l14y<l15y&&l14y<l16y&&l18y<l19y&&l18y<l20y) {
+		if(l4y>l8y||l4y>l12y||l4y>l16y||l4y>l20y) {
+			recognized_hand_gesture = new std::string("E");
+			cur = 'E';
+			LOG(INFO) << "E";
+			//return ::mediapipe::OkStatus();
+		}
+		else {
+			if(l4x<l6x) {
+				recognized_hand_gesture = new std::string("A");
+				cur = 'A';
+				LOG(INFO) << "A";
+				//return ::mediapipe::OkStatus();
+			}
+			else if(l4z<l7z || l4z<l11z || l4z<l15z) {
+				recognized_hand_gesture = new std::string("S");
+				cur = 'S';
+				LOG(INFO) << "S";
+				//return ::mediapipe::OkStatus();
+			}
+			else if((l4y<l10y && l4y<l6y) && (l4x<l10x)) {
+				recognized_hand_gesture = new std::string("T");
+				cur = 'T';
+				LOG(INFO) << "T";
+				//return ::mediapipe::OkStatus();
+			}
+		}
+	}
+	else if(orientation=='u' && l2x<l4x && l16y>l15y && l16y>l14y && l20y>l19y && l20y>l18y && l8y<l7y && l8y<l6y && l12y<l11y && l12y<l10y) {
+		float d812 = get_Euclidean_DistanceAB(l8x, l8y, l12x, l12y);
+		float d711 = get_Euclidean_DistanceAB(l7x, l7y, l11x, l11y);
+		if(d812 > 0.1) {
+			recognized_hand_gesture = new std::string("V");
+			cur = 'V';
+			LOG(INFO) << "V";
+			//return ::mediapipe::OkStatus();
+		}
+		else if(l7z<l11z) {
+			recognized_hand_gesture = new std::string("R");
+			cur = 'R';
+			LOG(INFO) << "R";
+			//return ::mediapipe::OkStatus();
+		}
+		else if(d711 < 0.1) {
+			recognized_hand_gesture = new std::string("U");
+			cur = 'U';
+			LOG(INFO) << "U";
+			//return ::mediapipe::OkStatus();
+		}
+	}
+	else if(orientation=='u' && get_Euclidean_DistanceAB(l4x, l4y, l12x, l12y)<0.1 && get_Euclidean_DistanceAB(l4x, l4y, l16x, l16y)<0.1 && get_Euclidean_DistanceAB(l4x, l4y, l20x, l20y)<0.1 && l8y<l7y && l8y<l6y) {
+		recognized_hand_gesture = new std::string("D");
+		cur = 'D';
+		LOG(INFO) << "D";
+		//return ::mediapipe::OkStatus();
+	}
+	else if(orientation=='u' && l12y>l11y && l12y>l10y && l16y>l15y && l16y>l14y && l20y>l19y && l20y>l18y && l4x>l5x) {
+		if(l8y<l7y && l8y<l6y && abs(l8z-l7z)>5) {
+			recognized_hand_gesture = new std::string("X");
+			cur = 'X';
+			LOG(INFO) << "X";
+			//return ::mediapipe::OkStatus();
+		}
+		else if(l8y<l7y && l8y<l6y) {
+			recognized_hand_gesture = new std::string("Z");
+			cur = 'Z';
+			LOG(INFO) << "Z";
+			//return ::mediapipe::OkStatus();
+		}
+	}
+	else if(orientation=='u' && l20y<l19y && l20y<l18y && l16y<l15y && l16y<l14y && l12y<l11y && l12y<l10y && l8y>l7y && l8y>l6y && l4x>l5x) {
+		recognized_hand_gesture = new std::string("F");
+		cur = 'F';
+		LOG(INFO) << "F";
+		//return ::mediapipe::OkStatus();
+	}
+	else if(orientation=='u' && l20y<l19y && l20y<l18y && l16y<l15y && l16y<l14y && l12y<l11y && l12y<l10y && l8y<l7y && l8y<l6y && l4x>l5x) {
+		recognized_hand_gesture = new std::string("B");
+		cur = 'B';
+		LOG(INFO) << "B";
+		//return ::mediapipe::OkStatus();
+	}
+	else if(orientation=='u' && l20y<l19y && l20y<l18y && l16y>l15y && l16y>l14y && l12y>l11y && l12y>l10y && l8y>l7y && l8y>l6y && l4x>l5x) {
+		recognized_hand_gesture = new std::string("I");
+		cur = 'I';
+		LOG(INFO) << "I";
+		//return ::mediapipe::OkStatus();
+	}
+	else if(orientation=='l' && l20x<l19x && l20x<l18x && l16x>l15x && l16x>l14x && l12x>l11x && l12x>l10x && l8x>l7x && l8x>l6x && l4y>l5y) {
+		recognized_hand_gesture = new std::string("J");
+		cur = 'J';
+		LOG(INFO) << "J";
+		//return ::mediapipe::OkStatus();
+	}
+	else if(orientation=='l' && l20x>l19x && l20x>l18x && l16x>l15x && l16x>l14x && l12x>l11x && l12x>l10x && l8x<l7x && l8x<l6x && l4x<l5x) {
+		recognized_hand_gesture = new std::string("G");
+		cur = 'G';
+		LOG(INFO) << "G";
+		//return ::mediapipe::OkStatus();
+	}
+	else if(orientation=='l' && l20x>l19x && l20x>l18x && l16x>l15x && l16x>l14x && l12x<l11x && l12x<l10x && l8x<l7x && l8x<l6x && l4x<l5x) {
+		recognized_hand_gesture = new std::string("H");
+		cur = 'H';
+		LOG(INFO) << "H";
+		//return ::mediapipe::OkStatus();
+	}
+	else if(orientation=='u' && l4x>l5x && l8y<l7y && l8y<l6y && l12y<l11y && l12y<l10y && l16y<l15y && l16y<l14y && l20y>l19y && l20y>l18y) {
+		recognized_hand_gesture = new std::string("W");
+		cur = 'W';
+		LOG(INFO) << "W";
+		//return ::mediapipe::OkStatus();
+	}
+	else if(orientation=='u' && l4x<l5x && l8y>l7y && l8y>l6y && l12y>l11y && l12y>l10y && l16y>l15y && l16y>l14y && l20y<l19y && l20y<l18y) {
+		recognized_hand_gesture = new std::string("Y");
+		cur = 'Y';
+		LOG(INFO) << "Y";
+		//return ::mediapipe::OkStatus();
+	}
+	else if(orientation=='l' && l20x<l17x && l16x<l13x && l12x<l9x && l8x<l5x && l4x<l2x) {
+		float d48 = get_Euclidean_DistanceAB(l4x, l4y, l8x, l8y);
+		if(d48<0.2) {
+			recognized_hand_gesture = new std::string("O");
+			cur = 'O';
+			LOG(INFO) << "O";
+			//return ::mediapipe::OkStatus();
+		}
+		else {
+			recognized_hand_gesture = new std::string("C");
+			cur = 'C';
+			LOG(INFO) << "C";
+			//return ::mediapipe::OkStatus();
+		}
+	}
+	else if(orientation=='u' && l4x<l5x && l16y>l15y && l16y>l14y && l20y>l19y && l20y>l18y && l8y<l7y && l8y<l6y && l12y<l11y && l12y<l10y) {
+		recognized_hand_gesture = new std::string("K");
+		cur = 'K';
+		LOG(INFO) << "K";
+		//return ::mediapipe::OkStatus();
+	}
+    else if(orientation=='u' && l4x<l5x && l16y>l15y && l16y>l14y && l20y>l19y && l20y>l18y && l8y<l7y && l8y<l6y && l12y>l11y && l12y>l10y) {
+		recognized_hand_gesture = new std::string("L");
+		cur = 'L';
+		LOG(INFO) << "L";
+		//return ::mediapipe::OkStatus();
+	}
+	else if(orientation=='d') {
+		recognized_hand_gesture = new std::string("");
+		cur = '\u0000';
+		LOG(INFO) << "Downward Gesture";
+	}
+	
+	if(text.size()>0) {
+		char prev = text[text.size()-1];
+		if(prev!=cur) {
+			text.push_back(cur);
+		}
+	}
+	else {
+		text.push_back(cur);
+	}
+	
+	recognized_hand_gesture = new std::string(text);
+	LOG(INFO) << text;
+	cc->Outputs()
+        .Tag(recognizedHandGestureTag)
+        .Add(recognized_hand_gesture, cc->InputTimestamp());
+=======
 	LOG(INFO) << "\n\n";
 	*/
 	if (width < 0.01 || height < 0.01)
@@ -276,6 +517,7 @@ REGISTER_CALCULATOR(HandGestureRecognitionCalculator);
 			return ::mediapipe::OkStatus();
 		}
 	}
+>>>>>>> 3a7d6a46c987f0ce67fc909c3c407a9997a71478
     return ::mediapipe::OkStatus();
 }
 
